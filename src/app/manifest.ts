@@ -2,15 +2,15 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Sweet Haven",
-    short_name: "Sweet Haven",
-    description: "A small-batch sweet shop serving handmade candy, cakes, and confections.",
+    name: "Real Bengal Sweets — Management System",
+    short_name: "RBS Management",
+    description: "Operations dashboard for Real Bengal Sweets: orders, inventory, billing, payroll, and more.",
     start_url: "/",
     display: "standalone",
-    orientation: "portrait",
-    background_color: "#ffffff",
-    theme_color: "#000000",
-    categories: ["productivity"],
+    orientation: "landscape",
+    background_color: "#f4f6f9",
+    theme_color: "#a9631a",
+    categories: ["business", "productivity"],
     icons: [
       {
         src: "/icons/icon-192x192.png",

@@ -1,4 +1,8 @@
 import withPWA from "@ducanh2912/next-pwa";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig = withPWA({
   dest: "public",
@@ -32,6 +36,9 @@ const nextConfig = withPWA({
   },
 })({
   reactStrictMode: true,
+  // Pin the workspace root (a stray lockfile exists in the home dir) so build
+  // tracing stays scoped to this project.
+  outputFileTracingRoot: projectRoot,
 });
 
 export default nextConfig;

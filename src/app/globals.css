@@ -1,26 +1,81 @@
 @import "tailwindcss";
 
+/* ============================================================
+   RBS — single unified theme (all roles share this)
+   Professional "counter dashboard" look: light, crisp, dense.
+   ============================================================ */
+@theme {
+  /* Brand (warm caramel — ties to sweets, stays professional) */
+  --color-brand-50: #fdf6ec;
+  --color-brand-100: #f9e7cf;
+  --color-brand-200: #f0cfa0;
+  --color-brand-500: #c8791f;
+  --color-brand-600: #a9631a;
+  --color-brand-700: #854d15;
+  --color-brand-800: #613810;
+
+  /* Neutral ink scale (slate) */
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+
+  /* Surfaces & lines */
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f8fa;
+  --color-line: #e5e9ef;
+
+  /* Status */
+  --color-ok: #15803d;
+  --color-ok-bg: #dcfce7;
+  --color-warn: #b45309;
+  --color-warn-bg: #fef3c7;
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fee2e2;
+  --color-info: #1d4ed8;
+  --color-info-bg: #dbeafe;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f6f9;
+  --foreground: #0f172a;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Status chip used across grids and screens */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip.ok { color: var(--color-ok); background: var(--color-ok-bg); }
+.chip.warn { color: var(--color-warn); background: var(--color-warn-bg); }
+.chip.danger { color: var(--color-danger); background: var(--color-danger-bg); }
+.chip.info { color: var(--color-info); background: var(--color-info-bg); }
+.chip.neutral { color: var(--color-ink-600); background: var(--color-ink-100); }
