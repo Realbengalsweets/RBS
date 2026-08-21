@@ -4,24 +4,7 @@ import { useMemo } from "react";
 import type { CellValueChangedEvent, ColDef, ICellRendererParams } from "ag-grid-community";
 import DataGrid from "@/components/DataGrid";
 import { GridButton, chipRenderer, kg, money, rightNum } from "@/lib/gridCells";
-import { useStore, type Kind } from "@/lib/store";
-
-/** One flat row shape for every record type — so the Super Admin sees
- *  everything in a single sheet without switching tabs. */
-type AnyRecord = {
-  key: string; // grid row id (kind + id)
-  kind: Kind; // source collection
-  id: string; // source record id
-  type: "Bill" | "Order" | "Raw material";
-  date: string;
-  location: string;
-  party: string; // customer / vendor-source
-  item: string;
-  qtyKg: number;
-  amount: number | "";
-  payment: string;
-  status: string;
-};
+import { useAllRecords, type AnyRecord } from "@/lib/useAllRecords";
 
 const STATUS_CHIPS = {
   Pending: "warn",
@@ -33,35 +16,45 @@ const STATUS_CHIPS = {
   "Not received": "danger",
 };
 
+/** The Super Admin's single view of every record — bills, orders and raw
+ *  material requests together. Reads/writes are Supabase-backed when configured. */
 export default function AllTransactions() {
-  const { db, updateRow, deleteRow } = useStore();
+  const { rows, locations, updateRecord, deleteRecord } = useAllRecords();
 
-  const rows = useMemo<AnyRecord[]>(() => {
-    const bills: AnyRecord[] = db.bills.map((b) => ({
-      key: `bills:${b.id}`, kind: "bills", id: b.id, type: "Bill", date: b.time,
-      location: b.shop, party: b.customer, item: b.items.map((i) => i.item).join(", "), qtyKg: b.qtyKg, amount: b.amount, payment: b.pay, status: "",
-    }));
-    const orders: AnyRecord[] = db.orders.map((o) => ({
-      key: `orders:${o.id}`, kind: "orders", id: o.id, type: "Order", date: o.date,
-      location: o.shop, party: "—", item: o.items.map((i) => i.product).join(", "), qtyKg: o.qtyKg, amount: "", payment: "", status: o.status,
-    }));
-    const raw: AnyRecord[] = db.raw.map((r) => ({
-      key: `raw:${r.id}`, kind: "raw", id: r.id, type: "Raw material", date: r.date,
-      location: "Factory", party: r.source, item: r.material, qtyKg: r.neededKg, amount: "", payment: "", status: r.status,
-    }));
-    return [...bills, ...orders, ...raw];
-  }, [db]);
+  // One sales column per location, auto-generated from the location list, so
+  // the Super Admin sees every shop/factory/warehouse's sales in one sheet.
+  const locCols = useMemo<ColDef<AnyRecord>[]>(
+    () =>
+      locations.map((loc) => ({
+        headerName: loc,
+        colId: `loc:${loc}`,
+        width: 130,
+        editable: false,
+        filter: false,
+        ...rightNum,
+        valueGetter: (p) => {
+          const data = p.data as (AnyRecord & Record<string, number>) | undefined;
+          if (!data) return "";
+          if (p.node?.rowPinned) return data[`loc:${loc}`] || "";
+          return data.location === loc && typeof data.amount === "number" ? data.amount : "";
+        },
+        valueFormatter: money,
+      })),
+    [locations],
+  );
 
   const cols = useMemo<ColDef<AnyRecord>[]>(
     () => [
       { field: "type", headerName: "Type", width: 130, editable: false, cellRenderer: chipRenderer({ Bill: "info", Order: "neutral", "Raw material": "warn" }) },
-      { field: "id", headerName: "Ref #", width: 110, editable: false },
+      { field: "ref", headerName: "Ref #", width: 120, editable: false },
       { field: "date", headerName: "Date", width: 100, editable: false },
-      { field: "location", headerName: "Location", minWidth: 120, cellEditor: "agSelectCellEditor", cellEditorParams: { values: db.locations } },
+      { field: "location", headerName: "Location", minWidth: 120, cellEditor: "agSelectCellEditor", cellEditorParams: { values: locations } },
       { field: "party", headerName: "Customer / Vendor", minWidth: 160 },
       { field: "item", headerName: "Item / Product", minWidth: 160, editable: (p) => p.data?.type === "Raw material" },
       { field: "qtyKg", headerName: "Qty", width: 100, valueFormatter: kg, editable: (p) => p.data?.type === "Raw material", ...rightNum },
       { field: "amount", headerName: "Amount", width: 120, valueFormatter: money, editable: false, ...rightNum },
+      // Per-location sales monitor columns.
+      ...locCols,
       { field: "payment", headerName: "Payment", width: 120, cellEditor: "agSelectCellEditor", cellEditorParams: { values: ["", "Cash", "Online", "Card"] }, cellRenderer: chipRenderer({ Cash: "neutral", Online: "info", Card: "info" }) },
       { field: "status", headerName: "Status", width: 140, cellEditor: "agSelectCellEditor", cellEditorParams: { values: ["", "Pending", "Accepted", "Dispatched", "Received", "Requested", "Ordered"] }, cellRenderer: chipRenderer(STATUS_CHIPS) },
       {
@@ -72,31 +65,45 @@ export default function AllTransactions() {
         filter: false,
         editable: false,
         cellRenderer: (p: ICellRendererParams<AnyRecord>) =>
-          p.data ? <GridButton label="Delete" tone="danger" onClick={() => deleteRow(p.data!.kind, p.data!.id)} /> : null,
+          p.data && !p.node?.rowPinned ? <GridButton label="Delete" tone="danger" onClick={() => deleteRecord(p.data!.kind, p.data!.id)} /> : null,
       },
     ],
-    [deleteRow, db.locations],
+    [deleteRecord, locations, locCols],
   );
+
+  // Pinned totals row — grand total + per-location sales totals.
+  const grandTotal = rows.reduce((a, r) => a + (typeof r.amount === "number" ? r.amount : 0), 0);
+  const perLoc: Record<string, number> = {};
+  for (const loc of locations) {
+    perLoc[`loc:${loc}`] = rows
+      .filter((r) => r.location === loc && typeof r.amount === "number")
+      .reduce((a, r) => a + (r.amount as number), 0);
+  }
+  const totalsRow = [
+    {
+      key: "TOTAL", kind: "bills", id: "TOTAL", ref: "TOTAL", type: "Bill",
+      date: "", location: "", party: "", item: "", qtyKg: "", amount: grandTotal, payment: "", status: "",
+      ...perLoc,
+    } as unknown as AnyRecord,
+  ];
 
   // Map an edit on the flat row back to the correct field of the source record.
   const onEdit = (e: CellValueChangedEvent<AnyRecord>) => {
     const r = e.data;
     const field = e.colDef.field;
     if (r.kind === "bills") {
-      // Item / qty / amount are derived from the invoice's line items, so they
-      // stay read-only here; the rest can be corrected inline.
-      if (field === "party") updateRow("bills", r.id, { customer: r.party });
-      else if (field === "location") updateRow("bills", r.id, { shop: r.location });
-      else if (field === "payment") updateRow("bills", r.id, { pay: r.payment });
+      // Item / qty / amount come from the invoice's line items → read-only here.
+      if (field === "party") updateRecord("bills", r.id, { customer: r.party });
+      else if (field === "location") updateRecord("bills", r.id, { shop: r.location });
+      else if (field === "payment") updateRecord("bills", r.id, { pay: r.payment });
     } else if (r.kind === "orders") {
-      // Products / qty are derived from the order's lines, so they're read-only here.
-      if (field === "location") updateRow("orders", r.id, { shop: r.location });
-      else if (field === "status") updateRow("orders", r.id, { status: r.status });
+      if (field === "location") updateRecord("orders", r.id, { shop: r.location });
+      else if (field === "status") updateRecord("orders", r.id, { status: r.status });
     } else if (r.kind === "raw") {
-      if (field === "party") updateRow("raw", r.id, { source: r.party });
-      else if (field === "item") updateRow("raw", r.id, { material: r.item });
-      else if (field === "qtyKg") updateRow("raw", r.id, { neededKg: Number(r.qtyKg) });
-      else if (field === "status") updateRow("raw", r.id, { status: r.status });
+      if (field === "party") updateRecord("raw", r.id, { source: r.party });
+      else if (field === "item") updateRecord("raw", r.id, { material: r.item });
+      else if (field === "qtyKg") updateRecord("raw", r.id, { neededKg: Number(r.qtyKg) });
+      else if (field === "status") updateRecord("raw", r.id, { status: r.status });
     }
   };
 
@@ -108,6 +115,7 @@ export default function AllTransactions() {
       editable
       getRowId={(r) => r.key}
       onCellValueChanged={onEdit}
+      pinnedBottomRowData={totalsRow}
       fill
     />
   );

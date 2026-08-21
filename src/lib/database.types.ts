@@ -42,6 +42,7 @@ export type ProfileRow = {
 };
 
 export type LocationRow = { id: string; name: string; created_at: string };
+export type SalaryClubRow = { id: string; name: string; created_at: string };
 export type ProductRow = { id: string; name: string; rate: number; expiry_days: number; created_at: string };
 export type VendorRow = { id: string; name: string; category: string; contact: string; created_at: string };
 
@@ -189,6 +190,7 @@ export type Database = {
       gas_orders: TableOf<GasOrderRow>;
       expenses: TableOf<ExpenseRow>;
       employees: TableOf<EmployeeRow>;
+      salary_clubs: TableOf<SalaryClubRow>;
     };
     Views: Record<string, never>;
     Functions: {

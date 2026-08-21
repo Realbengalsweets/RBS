@@ -39,15 +39,15 @@ export function GridButton({
   onClick: () => void;
 }) {
   const tones: Record<string, string> = {
-    default: "border-ink-200 text-ink-700 hover:bg-ink-50",
-    brand: "border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100",
+    default: "border-ink-200 text-ink-700 hover:bg-ink-50 hover:border-ink-300 hover:shadow-sm",
+    brand: "border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 hover:shadow-sm",
     // Subtle by default, turns red on hover — avoids a wall of red pills.
     danger: "border-transparent text-ink-400 hover:bg-red-50 hover:text-danger",
   };
   return (
     <button
       onClick={onClick}
-      className={`mr-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold transition-colors ${tones[tone]}`}
+      className={`mr-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold transition-all duration-150 hover:-translate-y-px active:translate-y-0 active:scale-95 ${tones[tone]}`}
     >
       {label}
     </button>

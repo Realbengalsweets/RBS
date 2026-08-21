@@ -91,13 +91,13 @@ export default function DataGrid<T>({
       : height;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm transition-shadow duration-200 hover:shadow-md">
       {/* Ribbon — sheet name + row count on the left, tools on the right. */}
       <div className="flex flex-wrap items-center gap-2.5 border-b border-line bg-surface-2 px-3.5 py-2.5">
         {title && (
           <h2 className="text-[16px] font-bold tracking-tight text-ink-800">{title}</h2>
         )}
-        <span className="rounded-full bg-ink-100 px-2.5 py-0.5 text-[12px] font-semibold text-ink-500">
+        <span className="rounded-full bg-ink-100 px-2.5 py-0.5 text-[12px] font-semibold text-ink-500 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]">
           {rowData.length} {rowData.length === 1 ? "row" : "rows"}
         </span>
         <div className="ml-auto flex items-center gap-2">
@@ -105,12 +105,12 @@ export default function DataGrid<T>({
             value={quickFilter}
             onChange={(e) => setQuickFilter(e.target.value)}
             placeholder="Search this sheet…"
-            className="h-11 w-64 rounded-md border border-ink-200 bg-surface px-3.5 text-base text-ink-800 outline-none placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            className="h-11 w-64 rounded-lg border border-ink-200 bg-surface px-3.5 text-base text-ink-800 outline-none transition-all duration-150 placeholder:text-ink-400 hover:border-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
           <div className="relative">
             <button
               onClick={() => setColsOpen((o) => !o)}
-              className="h-11 rounded-md border border-ink-200 bg-surface px-4 text-base font-semibold text-ink-700 transition-colors hover:bg-ink-50"
+              className="btn btn-outline btn-sm"
             >
               Columns
             </button>
@@ -145,7 +145,7 @@ export default function DataGrid<T>({
           </div>
           <button
             onClick={exportCsv}
-            className="h-11 rounded-md border border-ink-200 bg-surface px-4 text-base font-semibold text-ink-700 transition-colors hover:bg-ink-50"
+            className="btn btn-outline btn-sm"
           >
             Export CSV
           </button>

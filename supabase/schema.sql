@@ -227,8 +227,15 @@ create table if not exists public.employees (
   assignment text not null default '',
   salary     numeric not null default 0,
   advance    numeric not null default 0,
-  club       text not null default 'None',
+  club       text not null default '',
   status     text not null default 'Pending' check (status in ('Paid','Pending')),
+  created_at timestamptz not null default now()
+);
+
+-- Owner-managed salary clubs (the groupings shown on the Payroll screen).
+create table if not exists public.salary_clubs (
+  id         uuid primary key default gen_random_uuid(),
+  name       text unique not null,
   created_at timestamptz not null default now()
 );
 
@@ -297,7 +304,7 @@ end $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['locations','products','vendors']
+  foreach t in array array['locations','products','vendors','salary_clubs']
   loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists %I on public.%I', t||'_sel', t);
