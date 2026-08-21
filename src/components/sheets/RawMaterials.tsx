@@ -5,18 +5,18 @@ import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import DataGrid from "@/components/DataGrid";
 import { AddBar, Field, PrimaryButton, inputCls, selectCls } from "@/components/ui";
 import { GridButton, chipRenderer, kg, rightNum } from "@/lib/gridCells";
-import { RAW_MATERIALS, useStore, type RawReq } from "@/lib/store";
+import { useRawMaterials, type RawRow } from "@/lib/useRawMaterials";
 
 export default function RawMaterials() {
-  const { db, addRawReq, setRaw } = useStore();
-  const [material, setMaterial] = useState(RAW_MATERIALS[0]);
+  const { rows, materials, addRawReq, setRaw } = useRawMaterials();
+  const [material, setMaterial] = useState(materials[0]);
   const [customMat, setCustomMat] = useState("");
   const [needed, setNeeded] = useState("");
   const [avail, setAvail] = useState("");
 
-  const cols = useMemo<ColDef<RawReq>[]>(
+  const cols = useMemo<ColDef<RawRow>[]>(
     () => [
-      { field: "id", headerName: "Req #", width: 110 },
+      { field: "ref", headerName: "Req #", width: 110, editable: false },
       { field: "date", headerName: "Date", width: 100 },
       { field: "material", headerName: "Material", minWidth: 160 },
       { field: "neededKg", headerName: "Needed", width: 110, valueFormatter: kg, ...rightNum },
@@ -40,7 +40,7 @@ export default function RawMaterials() {
         sortable: false,
         filter: false,
         editable: false,
-        cellRenderer: (p: ICellRendererParams<RawReq>) => {
+        cellRenderer: (p: ICellRendererParams<RawRow>) => {
           const r = p.data;
           if (!r) return null;
           if (r.status === "Received") return <span className="text-ink-400">—</span>;
@@ -70,7 +70,7 @@ export default function RawMaterials() {
     const n = parseFloat(needed);
     if (!mat || !n || n <= 0) return;
     addRawReq(mat, n, parseFloat(avail) || 0);
-    setMaterial(RAW_MATERIALS[0]);
+    setMaterial(materials[0]);
     setCustomMat("");
     setNeeded("");
     setAvail("");
@@ -81,7 +81,7 @@ export default function RawMaterials() {
       <AddBar>
         <Field label="Raw material">
           <select className={selectCls} value={material} onChange={(e) => setMaterial(e.target.value)}>
-            {RAW_MATERIALS.map((m) => (
+            {materials.map((m) => (
               <option key={m}>{m}</option>
             ))}
           </select>
@@ -110,10 +110,10 @@ export default function RawMaterials() {
 
       <DataGrid
         title="Raw Materials & Vendors"
-        rowData={db.raw}
+        rowData={rows}
         columnDefs={cols}
         getRowId={(r) => r.id}
-        height={440}
+        fill
       />
     </div>
   );

@@ -11,8 +11,10 @@ import {
   type GasOrder,
   type InvRow,
   type MilkOrder,
-  type Transfer,
 } from "@/lib/store";
+import { useTransfers } from "@/lib/useTransfers";
+import { useInventory } from "@/lib/useInventory";
+import type { TransferRecord } from "@/lib/db";
 
 const litre = (p: ValueFormatterParams) => (p.value == null || p.value === "" ? "" : `${p.value} L`);
 
@@ -32,38 +34,35 @@ function deleteCol<T extends { id: string }>(onDelete: (id: string) => void): Co
 
 /* ========================= PRODUCT TRANSFER ========================= */
 export function ProductTransfer() {
-  const { db, addRow, updateRow, deleteRow } = useStore();
-  const products = db.products.map((p) => p.name);
-  const staff = db.users.map((u) => u.name);
-  const [product, setProduct] = useState(() => db.products[0]?.name ?? "");
+  const { transfers, products, locations, staff, addTransfer, updateTransfer, deleteTransfer } = useTransfers();
+  const [product, setProduct] = useState("");
   const [qty, setQty] = useState("");
-  const [batch, setBatch] = useState("");
-  const [from, setFrom] = useState(db.locations[0]);
-  const [to, setTo] = useState(db.locations[3] ?? db.locations[0]);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
-  const cols = useMemo<ColDef<Transfer>[]>(
+  const cols = useMemo<ColDef<TransferRecord>[]>(
     () => [
-      { field: "id", headerName: "Ref #", width: 100, editable: false },
-      { field: "date", headerName: "Date", width: 100 },
+      { field: "ref", headerName: "Ref #", width: 100, editable: false },
+      { field: "date", headerName: "Date", width: 110, editable: false },
       { field: "product", headerName: "Product", minWidth: 160, cellEditor: "agSelectCellEditor", cellEditorParams: { values: products } },
-      { field: "batch", headerName: "Batch", minWidth: 120 },
       { field: "qtyKg", headerName: "Qty", width: 100, valueFormatter: kg, ...rightNum },
-      { field: "from", headerName: "From", minWidth: 130, cellEditor: "agSelectCellEditor", cellEditorParams: { values: db.locations } },
-      { field: "to", headerName: "To", minWidth: 130, cellEditor: "agSelectCellEditor", cellEditorParams: { values: db.locations } },
+      { field: "from", headerName: "From", minWidth: 130, cellEditor: "agSelectCellEditor", cellEditorParams: { values: locations } },
+      { field: "to", headerName: "To", minWidth: 130, cellEditor: "agSelectCellEditor", cellEditorParams: { values: locations } },
       { field: "dispatchedBy", headerName: "Dispatched by", minWidth: 140, cellEditor: "agSelectCellEditor", cellEditorParams: { values: staff } },
       { field: "receivedBy", headerName: "Received by", minWidth: 130, cellEditor: "agSelectCellEditor", cellEditorParams: { values: ["—", ...staff] } },
       { field: "status", headerName: "Status", width: 140, cellEditor: "agSelectCellEditor", cellEditorParams: { values: ["Sent", "Dispatched", "Received"] }, cellRenderer: chipRenderer({ Sent: "warn", Dispatched: "info", Received: "ok" }) },
-      deleteCol<Transfer>((id) => deleteRow("transfers", id)),
+      deleteCol<TransferRecord>((id) => deleteTransfer(id)),
     ],
-    [products, staff, deleteRow, db.locations],
+    [products, staff, deleteTransfer, locations],
   );
 
   function add() {
     const q = parseFloat(qty);
+    const f = from || locations[0] || "";
+    const t = to || locations[1] || locations[0] || "";
     if (!product || !q || q <= 0) return;
-    addRow("transfers", { date: "10 Jul", product, batch: batch || "—", qtyKg: q, from, to, dispatchedBy: staff[0] ?? "—", receivedBy: "—", status: "Sent" });
+    addTransfer({ product, qtyKg: q, from: f, to: t, dispatchedBy: staff[0] ?? "—" });
     setQty("");
-    setBatch("");
   }
 
   return (
@@ -71,49 +70,55 @@ export function ProductTransfer() {
       <AddBar>
         <Field label="Product">
           <select className={selectCls} value={product} onChange={(e) => setProduct(e.target.value)}>
-            {db.products.map((p) => <option key={p.id}>{p.name}</option>)}
+            <option value="">Select…</option>
+            {products.map((p) => <option key={p}>{p}</option>)}
           </select>
         </Field>
         <Field label="Qty (kg)"><input className={`${inputCls} w-24`} type="number" min="0" value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
-        <Field label="Batch"><input className={`${inputCls} w-28`} value={batch} onChange={(e) => setBatch(e.target.value)} placeholder="LOT-…" /></Field>
         <Field label="From">
-          <select className={selectCls} value={from} onChange={(e) => setFrom(e.target.value)}>{db.locations.map((l) => <option key={l}>{l}</option>)}</select>
+          <select className={selectCls} value={from} onChange={(e) => setFrom(e.target.value)}>
+            <option value="">Select…</option>
+            {locations.map((l) => <option key={l}>{l}</option>)}
+          </select>
         </Field>
         <Field label="To">
-          <select className={selectCls} value={to} onChange={(e) => setTo(e.target.value)}>{db.locations.map((l) => <option key={l}>{l}</option>)}</select>
+          <select className={selectCls} value={to} onChange={(e) => setTo(e.target.value)}>
+            <option value="">Select…</option>
+            {locations.map((l) => <option key={l}>{l}</option>)}
+          </select>
         </Field>
         <PrimaryButton onClick={add}>Record transfer</PrimaryButton>
       </AddBar>
-      <DataGrid title="Product Transfer" rowData={db.transfers} columnDefs={cols} editable getRowId={(r) => r.id}
-        onCellValueChanged={(e: CellValueChangedEvent<Transfer>) => updateRow("transfers", e.data.id, { ...e.data, qtyKg: Number(e.data.qtyKg) })} fill />
+      <DataGrid title={`Product Transfer (${transfers.length})`} rowData={transfers} columnDefs={cols} editable getRowId={(r) => r.id}
+        onCellValueChanged={(e: CellValueChangedEvent<TransferRecord>) => updateTransfer(e.data.id, { ...e.data, qtyKg: Number(e.data.qtyKg) })} fill />
     </div>
   );
 }
 
 /* ========================= PRODUCT INVENTORY ======================== */
 export function ProductInventory() {
-  const { db, updateRow, deleteRow } = useStore();
-  const products = db.products.map((p) => p.name);
+  const { inventory, products, locations, addInventory, updateInventory, deleteInventory } = useInventory();
   const cols = useMemo<ColDef<InvRow>[]>(
     () => [
       { field: "product", headerName: "Product", minWidth: 160, cellEditor: "agSelectCellEditor", cellEditorParams: { values: products } },
-      { field: "location", headerName: "Location", minWidth: 140, cellEditor: "agSelectCellEditor", cellEditorParams: { values: db.locations } },
-      { field: "batch", headerName: "Batch No", minWidth: 120 },
-      { field: "mfgDate", headerName: "Mfg Date", width: 120 },
-      { field: "expiry", headerName: "Expiry", width: 120 },
+      { field: "location", headerName: "Location", minWidth: 140, cellEditor: "agSelectCellEditor", cellEditorParams: { values: locations } },
       { field: "opening", headerName: "Opening", width: 120, valueFormatter: kg, ...rightNum },
       { field: "inQty", headerName: "In", width: 100, valueFormatter: kg, ...rightNum },
       { field: "outQty", headerName: "Out", width: 100, valueFormatter: kg, ...rightNum },
       { field: "closing", headerName: "Closing", width: 120, valueFormatter: kg, ...rightNum },
       { field: "status", headerName: "Status", width: 150, cellEditor: "agSelectCellEditor", cellEditorParams: { values: ["In stock", "Low", "Out of stock"] }, cellRenderer: chipRenderer({ "In stock": "ok", Low: "warn", "Out of stock": "danger" }) },
-      deleteCol<InvRow>((id) => deleteRow("inventory", id)),
+      deleteCol<InvRow>((id) => deleteInventory(id)),
     ],
-    [products, deleteRow, db.locations],
+    [products, deleteInventory, locations],
   );
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <DataGrid title="Product Inventory (live, kg)" rowData={db.inventory} columnDefs={cols} editable getRowId={(r) => r.id}
-        onCellValueChanged={(e: CellValueChangedEvent<InvRow>) => updateRow("inventory", e.data.id, { ...e.data })} fill />
+      <DataGrid title={`Product Inventory (live, kg) — ${inventory.length}`} rowData={inventory} columnDefs={cols} editable getRowId={(r) => r.id}
+        onCellValueChanged={(e: CellValueChangedEvent<InvRow>) => updateInventory(e.data.id, { ...e.data })}
+        toolbarActions={
+          <button onClick={addInventory} className="btn btn-primary btn-sm">+ Add row</button>
+        }
+        fill />
     </div>
   );
 }

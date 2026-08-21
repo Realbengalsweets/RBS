@@ -15,11 +15,13 @@ import type {
   Employee,
   Expense,
   FactoryOrder,
+  InvRow,
   OrderItem,
   PayMode,
   Product,
   RawSource,
   RawStatus,
+  Transfer,
   User,
   Vendor,
 } from "@/lib/store";
@@ -425,14 +427,16 @@ type RawReqRow = {
   req_date: string;
   material: string;
   needed_kg: number;
+  available_kg: number;
   source: RawSource;
   status: RawStatus;
+  for_order: string;
 };
 
 export async function listRawRequests() {
   const { data, error } = await getSupabase()
     .from("raw_requests")
-    .select("id,ref,req_date,material,needed_kg,source,status")
+    .select("id,ref,req_date,material,needed_kg,available_kg,source,status,for_order")
     .order("created_at", { ascending: false })
     .returns<RawReqRow[]>();
   if (error) throw error;
@@ -442,9 +446,23 @@ export async function listRawRequests() {
     date: r.req_date,
     material: r.material,
     neededKg: Number(r.needed_kg),
+    availableKg: Number(r.available_kg),
     source: r.source as string,
     status: r.status as string,
+    forOrder: r.for_order ?? "",
   }));
+}
+
+/** Raises a new raw-material request (auto ref via DB sequence, auto date). */
+export async function createRawRequest(material: string, neededKg: number, availableKg: number): Promise<void> {
+  const { error } = await getSupabase().from("raw_requests").insert({
+    material,
+    needed_kg: neededKg,
+    available_kg: availableKg,
+    source: "—",
+    status: "Requested",
+  });
+  if (error) throw error;
 }
 
 export async function updateBillFields(id: string, patch: Record<string, unknown>): Promise<void> {
@@ -487,6 +505,7 @@ export async function updateRawFields(id: string, patch: Record<string, unknown>
       source: patch.source as RawSource | undefined,
       material: patch.material as string | undefined,
       needed_kg: patch.neededKg as number | undefined,
+      available_kg: patch.availableKg as number | undefined,
       status: patch.status as RawStatus | undefined,
     })
     .eq("id", id);
@@ -630,4 +649,150 @@ export async function listSalesForDashboard(): Promise<SalePoint[]> {
     .returns<{ bill_time: string; shop: string; amount: number }[]>();
   if (error) throw error;
   return (data ?? []).map((b) => ({ at: b.bill_time, shop: b.shop, amount: Number(b.amount) }));
+}
+
+/* ------------------------------ Transfers -------------------------------- */
+type TransferDbRow = {
+  id: string;
+  ref: string;
+  transfer_date: string;
+  product: string;
+  qty_kg: number;
+  from_loc: string;
+  to_loc: string;
+  dispatched_by: string;
+  received_by: string;
+  status: Transfer["status"];
+};
+
+export type TransferRecord = Transfer & { ref: string };
+
+export async function listTransfers(): Promise<TransferRecord[]> {
+  const { data, error } = await getSupabase()
+    .from("transfers")
+    .select("id,ref,transfer_date,product,qty_kg,from_loc,to_loc,dispatched_by,received_by,status")
+    .order("created_at", { ascending: false })
+    .returns<TransferDbRow[]>();
+  if (error) throw error;
+  return (data ?? []).map((t) => ({
+    id: t.id,
+    ref: t.ref,
+    date: t.transfer_date,
+    product: t.product,
+    batch: "",
+    qtyKg: Number(t.qty_kg),
+    from: t.from_loc,
+    to: t.to_loc,
+    dispatchedBy: t.dispatched_by,
+    receivedBy: t.received_by,
+    status: t.status,
+  }));
+}
+
+export async function createTransfer(t: {
+  product: string;
+  qtyKg: number;
+  from: string;
+  to: string;
+  dispatchedBy: string;
+}): Promise<void> {
+  const { error } = await getSupabase().from("transfers").insert({
+    product: t.product,
+    qty_kg: t.qtyKg,
+    from_loc: t.from,
+    to_loc: t.to,
+    dispatched_by: t.dispatchedBy,
+    received_by: "—",
+    status: "Sent",
+  });
+  if (error) throw error;
+}
+
+export async function updateTransfer(id: string, patch: Partial<Transfer>): Promise<void> {
+  const { error } = await getSupabase()
+    .from("transfers")
+    .update({
+      product: patch.product,
+      qty_kg: patch.qtyKg,
+      from_loc: patch.from,
+      to_loc: patch.to,
+      dispatched_by: patch.dispatchedBy,
+      received_by: patch.receivedBy,
+      status: patch.status,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteTransfer(id: string): Promise<void> {
+  const { error } = await getSupabase().from("transfers").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ------------------------------ Inventory -------------------------------- */
+type InventoryDbRow = {
+  id: string;
+  product: string;
+  location: string;
+  opening: number;
+  in_qty: number;
+  out_qty: number;
+  closing: number;
+  status: InvRow["status"];
+};
+
+export async function listInventory(): Promise<InvRow[]> {
+  const { data, error } = await getSupabase()
+    .from("inventory")
+    .select("id,product,location,opening,in_qty,out_qty,closing,status")
+    .order("product")
+    .returns<InventoryDbRow[]>();
+  if (error) throw error;
+  return (data ?? []).map((i) => ({
+    id: i.id,
+    product: i.product,
+    location: i.location,
+    batch: "",
+    mfgDate: "",
+    expiry: "",
+    opening: Number(i.opening),
+    inQty: Number(i.in_qty),
+    outQty: Number(i.out_qty),
+    closing: Number(i.closing),
+    status: i.status,
+  }));
+}
+
+export async function createInventory(): Promise<void> {
+  const { error } = await getSupabase().from("inventory").insert({
+    product: "",
+    location: "",
+    opening: 0,
+    in_qty: 0,
+    out_qty: 0,
+    closing: 0,
+    status: "In stock",
+  });
+  if (error) throw error;
+}
+
+export async function updateInventory(id: string, patch: Partial<InvRow>): Promise<void> {
+  const { error } = await getSupabase()
+    .from("inventory")
+    .update({
+      product: patch.product,
+      location: patch.location,
+      opening: patch.opening,
+      in_qty: patch.inQty,
+      out_qty: patch.outQty,
+      closing: patch.closing,
+      status: patch.status,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteInventory(id: string): Promise<void> {
+  const { error } = await getSupabase().from("inventory").delete().eq("id", id);
+  if (error) throw error;
 }
