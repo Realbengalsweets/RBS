@@ -8,11 +8,14 @@ import ShopOrders from "@/components/sheets/ShopOrders";
 import RawMaterials from "@/components/sheets/RawMaterials";
 import AllTransactions from "@/components/sheets/AllTransactions";
 import UserManagement from "@/components/sheets/UserManagement";
-import ProductsVendors from "@/components/sheets/ProductsVendors";
 import ExpensesSheet from "@/components/sheets/ExpensesSheet";
+import ProductsSheet from "@/components/sheets/ProductsSheet";
+import VendorsSheet from "@/components/sheets/VendorsSheet";
+import Dashboard from "@/components/sheets/Dashboard";
 import PayrollSheet from "@/components/sheets/PayrollSheet";
 import FactoryOverview from "@/components/sheets/FactoryOverview";
 import DemoLogin from "@/components/auth/DemoLogin";
+import { NavIcon } from "@/components/NavIcons";
 import {
   ProductTransfer,
   ProductInventory,
@@ -26,12 +29,17 @@ type TabDef = { key: string; label: string };
 // (confirmed against the "Login as" choice on the login screen).
 const ROLE_TABS: Record<string, TabDef[]> = {
   "Owner / Super Admin": [
+    { key: "dashboard", label: "Dashboard" },
     { key: "expenses", label: "Expenses" },
     { key: "transactions", label: "All Records" },
-    { key: "catalog", label: "Products & Vendors" },
+    { key: "products", label: "Products" },
+    { key: "vendors", label: "Vendors" },
     { key: "team", label: "Team" },
   ],
-  "General Manager": [{ key: "transactions", label: "All Records" }],
+  "General Manager": [
+    { key: "dashboard", label: "Dashboard" },
+    { key: "transactions", label: "All Records" },
+  ],
   "Factory Admin": [
     { key: "overview", label: "Overview" },
     { key: "shopOrders", label: "Shop Orders" },
@@ -50,7 +58,8 @@ const ROLE_TABS: Record<string, TabDef[]> = {
   ],
   Purchaser: [
     { key: "raw", label: "Raw Materials" },
-    { key: "catalog", label: "Products & Vendors" },
+    { key: "products", label: "Products" },
+    { key: "vendors", label: "Vendors" },
   ],
 };
 
@@ -119,84 +128,111 @@ function Workbook({
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-2">
-      {/* Title bar */}
-      <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-2.5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-lg font-black text-white">
-          R
-        </div>
-        <div className="leading-tight">
-          <div className="text-[16px] font-extrabold tracking-tight text-ink-900">
-            Real Bengal Sweets
+    <div className="flex h-screen overflow-hidden bg-ink-100">
+      {/* ---------------------------------------------------------------
+       * Sidebar — dark, icon+label nav with an active pill (reference look)
+       * ------------------------------------------------------------- */}
+      <aside className="flex w-16 flex-col bg-ink-900 lg:w-64">
+        {/* Brand */}
+        <div className="flex h-16 items-center gap-3 px-3 lg:px-5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 text-lg font-black text-white shadow-[var(--shadow-brand)]">
+            R
           </div>
-          <div className="text-[11px] font-semibold text-ink-500">Management System</div>
-        </div>
-        <div className="ml-1 hidden items-center gap-2 md:flex">
-          <span className="text-ink-300">/</span>
-          <span className="text-base font-semibold text-ink-700">{activeLabel}</span>
+          <div className="hidden leading-tight lg:block">
+            <div className="text-[15px] font-extrabold tracking-tight text-white">Real Bengal Sweets</div>
+            <div className="text-[11px] font-semibold text-ink-400">Management System</div>
+          </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
-          {demo && <span className="chip neutral">Demo</span>}
-          <div className="hidden text-right leading-tight sm:block">
-            <div className="text-sm font-semibold text-ink-800">{user.name}</div>
+        {/* Nav */}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3 lg:px-3">
+          {tabs.map((t) => {
+            const active = t.key === activeTab;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                title={t.label}
+                className={
+                  "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold transition-all duration-150 " +
+                  (active
+                    ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-[var(--shadow-brand)]"
+                    : "text-ink-400 hover:bg-white/5 hover:text-white")
+                }
+              >
+                <span className="grid h-5 w-5 shrink-0 place-items-center">
+                  <NavIcon name={t.key} />
+                </span>
+                <span className="hidden truncate lg:block">{t.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Footer badge */}
+        <div className="hidden px-4 py-4 lg:block">
+          <div className="rounded-xl bg-white/5 px-3 py-2.5 text-[11px] leading-tight text-ink-400">
+            <div className="font-bold text-ink-200">{demo ? "Demo preview" : "Live workspace"}</div>
+            <div className="mt-0.5">Real Bengal Sweets · v1</div>
+          </div>
+        </div>
+      </aside>
+
+      {/* ---------------------------------------------------------------
+       * Main column — top bar + content
+       * ------------------------------------------------------------- */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Top bar */}
+        <header className="z-20 flex h-16 items-center gap-3 border-b border-line bg-surface/95 px-5 shadow-sm backdrop-blur">
+          <div className="min-w-0">
+            <div className="truncate text-[18px] font-extrabold tracking-tight text-ink-900">{activeLabel}</div>
             <div className="text-[11px] font-medium text-ink-500">{user.role}</div>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-            {user.name.charAt(0) || "U"}
-          </div>
-          <button
-            onClick={authProfile ? onSignOut : () => setSignedIn(false)}
-            className="h-10 rounded-lg border border-ink-200 bg-surface px-3.5 text-[15px] font-medium text-ink-700 transition-colors hover:bg-ink-50"
-          >
-            Log out
-          </button>
-        </div>
-      </header>
 
-      {/* Sheet tabs — kept at the top and large so counter staff find them easily */}
-      <nav className="flex items-stretch gap-1 overflow-x-auto border-b border-line bg-surface px-3">
-        {tabs.map((t) => {
-          const active = t.key === activeTab;
-          return (
+          <div className="ml-auto flex items-center gap-3">
+            {demo && <span className="chip neutral">Demo</span>}
+            <div className="hidden text-right leading-tight sm:block">
+              <div className="text-sm font-semibold text-ink-800">{user.name}</div>
+              <div className="text-[11px] font-medium text-ink-500">{user.location}</div>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 ring-2 ring-brand-50 ring-offset-1 ring-offset-surface">
+              {user.name.charAt(0) || "U"}
+            </div>
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={
-                "whitespace-nowrap border-b-[3px] px-5 py-3 text-[15px] font-bold transition-colors " +
-                (active
-                  ? "border-brand-600 text-brand-700"
-                  : "border-transparent text-ink-500 hover:bg-ink-50 hover:text-ink-800")
-              }
+              onClick={authProfile ? onSignOut : () => setSignedIn(false)}
+              className="btn btn-outline btn-sm"
             >
-              {t.label}
+              Log out
             </button>
-          );
-        })}
-      </nav>
-
-      {/* Sheet canvas */}
-      <main className="flex min-h-0 flex-1 flex-col overflow-auto bg-ink-100 p-4">
-        {tabs.length === 0 && (
-          <div className="rounded-xl border border-line bg-surface p-6 text-sm text-ink-500">
-            No sheets are configured for the “{user.role}” role in this demo yet.
           </div>
-        )}
+        </header>
 
-        {activeTab === "order" && <OrderFromFactory shop={shop} />}
-        {activeTab === "billing" && <BillingCounter shop={shop} />}
-        {activeTab === "overview" && <FactoryOverview />}
-        {activeTab === "shopOrders" && <ShopOrders />}
-        {activeTab === "raw" && <RawMaterials />}
-        {activeTab === "transfer" && <ProductTransfer />}
-        {activeTab === "inventory" && <ProductInventory />}
-        {activeTab === "supplies" && <SuppliesSection />}
-        {activeTab === "expenses" && <ExpensesSheet />}
-        {activeTab === "transactions" && <AllTransactions />}
-        {activeTab === "catalog" && <ProductsVendors />}
-        {activeTab === "team" && <TeamSection />}
-      </main>
+        {/* Sheet canvas */}
+        <main className="flex min-h-0 flex-1 flex-col overflow-auto p-5">
+          <div key={activeTab} className="fade-in flex min-h-0 flex-1 flex-col">
+            {tabs.length === 0 && (
+              <div className="card p-6 text-sm text-ink-500">
+                No sheets are configured for the “{user.role}” role in this demo yet.
+              </div>
+            )}
 
+            {activeTab === "order" && <OrderFromFactory shop={shop} />}
+            {activeTab === "billing" && <BillingCounter shop={shop} />}
+            {activeTab === "overview" && <FactoryOverview />}
+            {activeTab === "shopOrders" && <ShopOrders />}
+            {activeTab === "raw" && <RawMaterials />}
+            {activeTab === "transfer" && <ProductTransfer />}
+            {activeTab === "inventory" && <ProductInventory />}
+            {activeTab === "supplies" && <SuppliesSection />}
+            {activeTab === "dashboard" && <Dashboard />}
+            {activeTab === "expenses" && <ExpensesSheet />}
+            {activeTab === "transactions" && <AllTransactions />}
+            {activeTab === "products" && <ProductsSheet />}
+            {activeTab === "vendors" && <VendorsSheet />}
+            {activeTab === "team" && <TeamSection />}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
@@ -213,7 +249,7 @@ function SectionTabs({ tabs }: { tabs: SubTab[] }) {
   const current = tabs.find((t) => t.key === active) ?? tabs[0];
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-line bg-surface-2 p-1.5">
+      <div className="inline-flex w-fit items-center gap-1 rounded-xl border border-line bg-surface-2 p-1.5 shadow-xs">
         {tabs.map((t) => {
           const on = t.key === current.key;
           return (
@@ -221,8 +257,10 @@ function SectionTabs({ tabs }: { tabs: SubTab[] }) {
               key={t.key}
               onClick={() => setActive(t.key)}
               className={
-                "rounded-md px-5 py-2.5 text-[15px] font-bold transition-colors " +
-                (on ? "bg-surface text-brand-700 shadow-sm" : "text-ink-500 hover:text-ink-800")
+                "rounded-lg px-5 py-2.5 text-[15px] font-bold transition-all duration-150 active:scale-95 " +
+                (on
+                  ? "bg-surface text-brand-700 shadow-sm"
+                  : "text-ink-500 hover:bg-surface/60 hover:text-ink-800")
               }
             >
               {t.label}
@@ -230,7 +268,9 @@ function SectionTabs({ tabs }: { tabs: SubTab[] }) {
           );
         })}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto">{current.render()}</div>
+      <div key={current.key} className="fade-in flex min-h-0 flex-1 flex-col overflow-auto">
+        {current.render()}
+      </div>
     </div>
   );
 }

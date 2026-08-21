@@ -1,26 +1,16 @@
 "use client";
 
 import { useStore } from "@/lib/store";
+import { StatCard } from "@/components/ui";
 
 const statusTone = (s: string) =>
   s === "Received" ? "ok" : s === "Pending" ? "warn" : "info";
 
-function Kpi({ label, value, tone }: { label: string; value: number; tone: string }) {
-  const color =
-    tone === "warn"
-      ? "text-amber-600"
-      : tone === "danger"
-        ? "text-danger"
-        : tone === "info"
-          ? "text-brand-700"
-          : "text-ink-800";
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
-      <div className={`text-4xl font-black ${color}`}>{value}</div>
-      <div className="mt-1 text-[13px] font-semibold uppercase tracking-wide text-ink-500">{label}</div>
-    </div>
-  );
-}
+const Dot = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="8" />
+  </svg>
+);
 
 /** Factory manager landing view — the day's numbers and the orders to act on. */
 export default function FactoryOverview() {
@@ -36,15 +26,15 @@ export default function FactoryOverview() {
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* Key numbers */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi label="Orders to accept" value={toAccept.length} tone="warn" />
-        <Kpi label="Ready to dispatch" value={toDispatch.length} tone="info" />
-        <Kpi label="Stock alerts" value={stockAlerts.length} tone="danger" />
-        <Kpi label="Raw requests" value={rawPending.length} tone="neutral" />
+        <StatCard label="Orders to accept" value={toAccept.length} icon={<Dot />} iconTone="warn" hint="awaiting review" />
+        <StatCard label="Ready to dispatch" value={toDispatch.length} icon={<Dot />} iconTone="info" hint="accepted orders" />
+        <StatCard label="Stock alerts" value={stockAlerts.length} icon={<Dot />} iconTone="danger" hint="low / out of stock" />
+        <StatCard label="Raw requests" value={rawPending.length} icon={<Dot />} iconTone="brand" hint="pending materials" />
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
         {/* Orders needing action */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+        <section className="card flex min-h-0 flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-line px-5 py-3">
             <h2 className="text-base font-bold tracking-tight text-ink-800">Orders needing action</h2>
             <span className="text-sm font-medium text-ink-500">{needAction.length}</span>
@@ -70,14 +60,14 @@ export default function FactoryOverview() {
                     {o.status === "Pending" ? (
                       <button
                         onClick={() => setOrderStatus(o.id, "Accepted")}
-                        className="h-10 rounded-lg bg-brand-600 px-4 text-[15px] font-bold text-white transition-colors hover:bg-brand-700"
+                        className="btn btn-primary btn-sm"
                       >
                         Accept
                       </button>
                     ) : (
                       <button
                         onClick={() => setOrderStatus(o.id, "Dispatched")}
-                        className="h-10 rounded-lg bg-brand-600 px-4 text-[15px] font-bold text-white transition-colors hover:bg-brand-700"
+                        className="btn btn-primary btn-sm"
                       >
                         Dispatch
                       </button>
@@ -90,7 +80,7 @@ export default function FactoryOverview() {
         </section>
 
         {/* Stock alerts */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+        <section className="card flex min-h-0 flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b border-line px-5 py-3">
             <h2 className="text-base font-bold tracking-tight text-ink-800">Stock alerts</h2>
             <span className="text-sm font-medium text-ink-500">{stockAlerts.length}</span>

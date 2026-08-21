@@ -22,10 +22,12 @@ export default function DemoLogin({
   const current = users.find((u) => u.id === sel);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-100 p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-7 shadow-sm">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ink-100 p-4">
+      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-brand-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-brand-100/60 blur-3xl" />
+      <div className="fade-in relative w-full max-w-sm rounded-2xl border border-line bg-surface/90 p-7 shadow-lg backdrop-blur">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-xl font-black text-white">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-b from-brand-500 to-brand-700 text-xl font-black text-white shadow-[var(--shadow-brand)]">
             R
           </div>
           <div className="leading-tight">
@@ -57,7 +59,7 @@ export default function DemoLogin({
 
         <button
           onClick={() => sel && onSignIn(sel)}
-          className="mt-5 h-12 w-full rounded-lg bg-brand-600 text-base font-bold text-white transition-colors hover:bg-brand-700"
+          className="btn btn-primary mt-5 h-12 w-full"
         >
           Sign in
         </button>
