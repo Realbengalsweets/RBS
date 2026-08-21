@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useAuth } from "./AuthProvider";
+import { ROLES } from "@/lib/store";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
+  const [role, setRole] = useState(ROLES[4]); // Shop Admin
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +16,7 @@ export default function LoginScreen() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await signIn(email.trim(), password);
+    const res = await signIn(email.trim(), password, role);
     if (res.error) {
       setError(res.error);
       setBusy(false);
@@ -36,6 +38,22 @@ export default function LoginScreen() {
         </div>
 
         <form onSubmit={submit} className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+              Login as
+            </span>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="h-10 rounded-lg border border-ink-200 bg-surface px-2 text-sm text-ink-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="flex flex-col gap-1">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">Email</span>
             <input

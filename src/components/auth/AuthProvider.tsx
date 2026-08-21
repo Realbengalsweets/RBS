@@ -20,7 +20,7 @@ type AuthState = {
   loading: boolean;
   session: Session | null;
   profile: ProfileRow | null;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string, expectedRole: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -70,10 +70,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [loadProfile]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string, expectedRole: string) => {
     if (!supabaseEnabled) return { error: "Supabase is not configured." };
-    const { error } = await getSupabase().auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    const supabase = getSupabase();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+
+    const userId = data.user?.id;
+    if (!userId) return { error: "Sign-in failed. Please try again." };
+
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    const p = profileRow as ProfileRow | null;
+
+    if (!p || p.role !== expectedRole) {
+      await supabase.auth.signOut();
+      return {
+        error: p
+          ? `This account is registered as ${p.role}. Select the matching option to sign in.`
+          : "No profile was found for this account.",
+      };
+    }
+
+    return { error: null };
   }, []);
 
   const signOut = useCallback(async () => {

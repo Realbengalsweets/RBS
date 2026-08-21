@@ -22,8 +22,8 @@ import {
 
 type TabDef = { key: string; label: string };
 
-// Sheets available to each role. A user's role (set by the Super Admin on their
-// account) decides this — the user never picks it at login.
+// Sheets available to each role. The role comes from the signed-in profile
+// (confirmed against the "Login as" choice on the login screen).
 const ROLE_TABS: Record<string, TabDef[]> = {
   "Owner / Super Admin": [
     { key: "expenses", label: "Expenses" },
